@@ -1,0 +1,64 @@
+import pandas as pd
+import yfinance as yf
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+# Define the Nifty 50 symbols
+nifty_50_symbols = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "FB", "V", "NVDA", "PYPL", "BABA",
+                    "JPM", "BAC", "WMT", "DIS", "IBM", "XOM", "GS", "CSCO", "INTC", "CVX",
+                    "HON", "MMM", "CAT", "BA", "UNH", "KO", "MCD", "HD", "VZ", "T", "C",
+                    "PEP", "JNJ", "PG", "MRK", "WBA", "ABT", "NKE", "UTX", "AMGN", "PFE",
+                    "COST", "GS", "MS", "AXP", "AAPL", "WMT", "DIS", "IBM", "GS", "CSCO"]
+
+# Fetch historical data for the specified symbols for a day
+start_date = "2024-02-10"
+end_date = "2024-02-10"
+
+nifty_50_data = yf.download(nifty_50_symbols, start=start_date, end=end_date)
+
+# Extracting the closing prices
+closing_prices = nifty_50_data['Adj Close']
+
+# Calculate daily returns
+daily_returns = closing_prices.pct_change()
+
+# Calculate mean and standard deviation of daily returns
+mean_returns = daily_returns.mean()
+std_dev_returns = daily_returns.std()
+
+# Visualize the daily returns distribution using a histogram
+plt.figure(figsize=(14, 7))
+sns.histplot(daily_returns.dropna(), bins=20, kde=True, color='blue')
+plt.title('Distribution of Daily Returns - Nifty 50')
+plt.xlabel('Daily Returns')
+plt.ylabel('Frequency')
+plt.show()
+
+# Analyze volatility by calculating rolling standard deviation
+rolling_volatility = daily_returns.rolling(window=20).std()
+
+# Plot rolling volatility
+plt.figure(figsize=(14, 7))
+rolling_volatility.plot(title='Rolling 20-Day Volatility - Nifty 50', color='green')
+plt.xlabel('Date')
+plt.ylabel('Volatility')
+plt.show()
+
+# Calculate Bollinger Bands
+sma = closing_prices.rolling(window=20).mean()
+upper_band = sma + (2 * rolling_volatility)
+lower_band = sma - (2 * rolling_volatility)
+
+# Plot Bollinger Bands
+plt.figure(figsize=(14, 7))
+closing_prices.plot(label='Closing Prices', color='blue')
+sma.plot(label='20-Day SMA', color='orange')
+upper_band.plot(label='Upper Bollinger Band', color='green')
+lower_band.plot(label='Lower Bollinger Band', color='red')
+
+plt.title('Bollinger Bands - Nifty 50')
+plt.xlabel('Date')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
