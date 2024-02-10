@@ -1,0 +1,91 @@
+import pandas as pd
+import yfinance as yf
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from statsmodels.tsa.stattools import adfuller
+
+# Define the Nifty 50 symbols
+nifty_50_symbols = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "FB", "V", "NVDA", "PYPL", "BABA",
+                    "JPM", "BAC", "WMT", "DIS", "IBM", "XOM", "GS", "CSCO", "INTC", "CVX",
+                    "HON", "MMM", "CAT", "BA", "UNH", "KO", "MCD", "HD", "VZ", "T", "C",
+                    "PEP", "JNJ", "PG", "MRK", "WBA", "ABT", "NKE", "UTX", "AMGN", "PFE",
+                    "COST", "GS", "MS", "AXP", "AAPL", "WMT", "DIS", "IBM", "GS", "CSCO"]
+
+# Choose a specific stock for comparison (e.g., AAPL)
+chosen_stock_symbol = "AAPL"
+
+# Fetch historical data for Nifty 50 and the chosen stock
+start_date = "2024-01-01"
+end_date = "2024-02-10"
+
+nifty_50_data = yf.download(nifty_50_symbols, start=start_date, end=end_date)['Adj Close']
+chosen_stock_data = yf.download(chosen_stock_symbol, start=start_date, end=end_date)['Adj Close']
+
+# Calculate daily returns
+nifty_50_returns = nifty_50_data.pct_change()
+chosen_stock_returns = chosen_stock_data.pct_change()
+
+# Calculate rolling statistics
+rolling_volatility_nifty_50 = nifty_50_returns.rolling(window=20).std()
+rolling_volatility_chosen_stock = chosen_stock_returns.rolling(window=20).std()
+
+# Plot rolling volatility comparison
+plt.figure(figsize=(18, 9))
+plt.subplot(2, 2, 1)
+rolling_volatility_nifty_50.plot(label='Nifty 50', color='blue')
+rolling_volatility_chosen_stock.plot(label=f'{chosen_stock_symbol}', color='orange')
+plt.title(f'Rolling 20-Day Volatility Comparison - {chosen_stock_symbol} vs Nifty 50')
+plt.xlabel('Date')
+plt.ylabel('Volatility')
+plt.legend()
+
+# Conduct Augmented Dickey-Fuller test for stationarity
+result_nifty_50 = adfuller(nifty_50_returns.dropna())
+result_chosen_stock = adfuller(chosen_stock_returns.dropna())
+
+# Print ADF test results
+print(f"\nAugmented Dickey-Fuller Test Results:")
+print(f"Nifty 50 ADF Statistic: {result_nifty_50[0]}, p-value: {result_nifty_50[1]}")
+print(f"{chosen_stock_symbol} ADF Statistic: {result_chosen_stock[0]}, p-value: {result_chosen_stock[1]}")
+
+# Plot autocorrelation function (ACF) and partial autocorrelation function (PACF)
+plt.subplot(2, 2, 2)
+pd.plotting.autocorrelation_plot(nifty_50_returns.dropna(), color='blue')
+plt.title(f'Autocorrelation Function - Nifty 50 Returns')
+
+plt.subplot(2, 2, 3)
+pd.plotting.autocorrelation_plot(chosen_stock_returns.dropna(), color='orange')
+plt.title(f'Autocorrelation Function - {chosen_stock_symbol} Returns')
+
+# Apply Principal Component Analysis (PCA) for dimensionality reduction
+plt.subplot(2, 2, 4)
+returns_combined = pd.concat([nifty_50_returns, chosen_stock_returns], axis=1).dropna()
+scaler = StandardScaler()
+scaled_returns = scaler.fit_transform(returns_combined)
+
+pca = PCA(n_components=2)
+principal_components = pca.fit_transform(scaled_returns)
+pc_df = pd.DataFrame(data=principal_components, columns=['PC1', 'PC2'])
+
+plt.scatter(pc_df['PC1'], pc_df['PC2'], c='red', marker='o')
+plt.title('Principal Component Analysis')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+
+plt.tight_layout()
+plt.show()
+
+# Apply K-Means clustering on the principal components
+kmeans = KMeans(n_clusters=2, random_state=42)
+pc_df['Cluster'] = kmeans.fit_predict(pc_df[['PC1', 'PC2']])
+
+# Plot the clusters
+plt.figure(figsize=(12, 6))
+sns.scatterplot(x='PC1', y='PC2', hue='Cluster', data=pc_df, palette='viridis', marker='o', s=100)
+plt.title('K-Means Clustering on Principal Components')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.show()
